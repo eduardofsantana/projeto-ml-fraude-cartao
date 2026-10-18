@@ -1,0 +1,8 @@
+Etapa,Modelo,Precision (Padrao),Recall (Padrao),F1 (Padrao),Precision (Otim),Recall (Otim),F1 (Otimizado),ROC-AUC,PR-AUC,Tempo (s)
+Proposta (Melhoria),XGBoost,0.8723,0.8367,0.8542,0.9011,0.8367,0.8677,0.9648,0.8736,7.24
+Proposta (Melhoria),Random Forest,0.8421,0.8163,0.829,0.8511,0.8163,0.8333,0.9752,0.8415,149.94
+Artigo 1 (IFSP),Regressao Logistica + SMOTE,0.0578,0.9184,0.1087,0.8333,0.8163,0.8247,0.971,0.7243,7.42
+Artigo 2 (UNIFESP),Logistic Regression,0.0611,0.9184,0.1145,0.8333,0.8163,0.8247,0.972,0.7105,9.79
+Artigo 2 (UNIFESP),Decision Tree,0.0584,0.8469,0.1093,0.7647,0.7959,0.78,0.9182,0.7337,15.21
+Artigo 2 (UNIFESP),SVM (LinearSVC),0.0715,0.9184,0.1327,0.7094,0.8469,0.7721,0.9747,0.7343,3.22
+Artigo 2 (UNIFESP),Naive Bayes,0.0587,0.8469,0.1099,0.0936,0.8061,0.1677,0.9632,0.0824,0.08
