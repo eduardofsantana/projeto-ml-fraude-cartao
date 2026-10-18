@@ -6,7 +6,7 @@ import joblib
 # configuracao basica da pagina
 st.set_page_config(page_title="Detector de Fraudes - Cartao de Credito", layout="wide")
 
-st.title("Sistema de Deteccao de Fraudes em Cartoes de Credito")
+st.title("SISTEMA DE DETECÇÃO DE FRAUDES EM CARTÕES DE CRÉDITO")
 st.write("""
 Aplicação desenvolvida para comparar o modelo baseline dos artigos estudados (**Regressao Logistica**) 
 com o modelo proposto na etapa de melhoria (**XGBoost**), permitindo ajustar o limiar de decisão (threshold).
