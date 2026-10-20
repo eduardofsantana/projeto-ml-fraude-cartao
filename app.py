@@ -8,7 +8,7 @@ st.set_page_config(page_title="Detector de Fraudes - Cartão de Crédito", layou
 
 st.title("🛡️ Sistema de Detecção de Fraudes em Cartões de Crédito")
 st.markdown("""
-Aplicativo desenvolvido para avaliar o desempenho de algoritmos de Machine Learning na triagem de transações,
+Aplicativo desenvolvido para avaliar o desempenho de algoritmos de Inteligência Artificial na triagem de transações,
 comparando as configurações de referência com o modelo **XGBoost (Proposto)** sob protocolo de validação independente.
 """)
 
@@ -40,8 +40,26 @@ escolha_modelo = st.sidebar.selectbox(
 limiar = st.sidebar.slider(
     "Limiar de Decisão (Threshold):",
     min_value=0.01, max_value=0.99, value=0.50, step=0.01,
-    help="O ajuste do limiar simula a calibração feita na partição de Validação (Protocolo B). Abaixar o limiar aumenta a detecção de fraudes (Recall), mas pode gerar bloqueios indevidos (Falsos Positivos)."
+    help="Abaixar o limiar aumenta a captura de fraudes, mas pode gerar falsos positivos."
 )
+
+# EXPLICAÇÃO DETALHADA PARA USUÁRIOS LEIGOS (O MVP)
+with st.sidebar.expander("📖 Entenda como este sistema funciona", expanded=False):
+    st.markdown("""
+    **O que é este MVP (Produto Mínimo Viável)?**
+    Este é um protótipo funcional de um sistema de segurança financeira. Ele usa Inteligência Artificial para ler os dados de uma transação de cartão de crédito no momento em que ela acontece e tentar adivinhar se é o dono do cartão comprando ou um golpista.
+    
+    **Como ele decide? (O Limiar / Threshold)**
+    A IA não responde apenas "sim" ou "não". Ela dá uma *probabilidade* (de 0% a 100%) da compra ser fraude. 
+    A barrinha acima (**Limiar de Decisão**) é a "régua" de corte que você define para a máquina:
+    * Se você colocar o limiar em **80%**, o sistema só vai bloquear a transação se tiver muita certeza. Isso evita bloquear o cartão de um cliente real, mas pode deixar um golpista inteligente passar.
+    * Se você colocar o limiar em **20%**, o sistema fica super rigoroso. Ele vai bloquear quase todos os golpistas, mas também vai acabar bloqueando as compras normais de clientes inocentes (o que chamamos de *Falso Positivo*).
+    
+    **Como testar?**
+    1. Vá na aba "Simulador Individual".
+    2. Escolha se quer testar uma "Fraude Real" ou uma "Operação Legítima".
+    3. Alterne o modelo e mude o Limiar na barrinha aqui do lado para ver a IA mudando de ideia e errando ou acertando ao vivo!
+    """)
 
 modelo_atual = modelo_xgb if "XGBoost" in escolha_modelo else modelo_lr
 
