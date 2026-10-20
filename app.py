@@ -43,7 +43,7 @@ limiar = st.sidebar.slider(
     help="Abaixar o limiar aumenta a captura de fraudes, mas pode gerar falsos positivos."
 )
 
-# EXPLICAÇÃO DETALHADA PARA USUÁRIOS LEIGOS (O MVP)
+# EXPLICAÇÃO DETALHADA
 with st.sidebar.expander("📖 Entenda como este sistema funciona", expanded=False):
     st.markdown("""
     **O que é este MVP (Produto Mínimo Viável)?**
