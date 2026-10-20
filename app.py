@@ -4,15 +4,15 @@ import numpy as np
 import joblib
 
 # configuracao basica da pagina
-st.set_page_config(page_title="Detector de Fraudes - Cartao de Credito", layout="wide")
+st.set_page_config(page_title="Detector de Fraudes - Cartão de Crédito", layout="wide")
 
-st.title("SISTEMA DE DETECÇÃO DE FRAUDES EM CARTÕES DE CRÉDITO")
-st.write("""
-Aplicação desenvolvida para comparar o modelo baseline dos artigos estudados (**Regressao Logistica**) 
-com o modelo proposto na etapa de melhoria (**XGBoost**), permitindo ajustar o limiar de decisão (threshold).
+st.title("🛡️ Sistema de Detecção de Fraudes em Cartões de Crédito")
+st.markdown("""
+Aplicativo desenvolvido para avaliar o desempenho de algoritmos de Machine Learning na triagem de transações,
+comparando as configurações de referência com o modelo **XGBoost (Proposto)** sob protocolo de validação independente.
 """)
 
-# funcao com cache para nao recarregar os modelos toda hora que mexer na tela
+# funcao com cache para nao recarregar os modelos e dados toda hora
 @st.cache_resource
 def carregar_arquivos():
     scaler = joblib.load('scaler.joblib')
@@ -25,112 +25,121 @@ def carregar_arquivos():
 try:
     scaler, modelo_lr, modelo_xgb, df_amostras, df_resultados = carregar_arquivos()
 except Exception as erro:
-    st.error(f"Erro ao carregar os arquivos do modelo. Verifique se todos os arquivos estao no repositorio. Detalhe: {erro}")
+    st.error(f"Erro ao carregar os artefatos do modelo. Certifique-se de que os arquivos .joblib e .csv estão no repositório. Detalhe: {erro}")
     st.stop()
 
-# menu lateral para escolher o modelo e o threshold
-st.sidebar.header("Configurações do modelo")
+# menu lateral de controle do modelo e do limiar
+st.sidebar.header("⚙️ Controle de Inferência")
 
 escolha_modelo = st.sidebar.selectbox(
-    "Escolha o modelo para testar:",
-    ["XGBoost (Melhoria proposta)", "Regressão Logística (Baseline Artigo 1)"]
+    "Motor de Classificação:",
+    ["XGBoost (Proposta Ensemble)", "Regressão Logística (Baseline)"]
 )
 
-# slider do threshold (inspirado no ajuste do Artigo 2)
+# slider de threshold variando do mais rigoroso ao mais permissivo
 limiar = st.sidebar.slider(
     "Limiar de Decisão (Threshold):",
-    min_value=0.05, max_value=0.95, value=0.50, step=0.05
+    min_value=0.01, max_value=0.99, value=0.50, step=0.01,
+    help="O ajuste do limiar simula a calibração feita na partição de Validação (Protocolo B). Abaixar o limiar aumenta a detecção de fraudes (Recall), mas pode gerar bloqueios indevidos (Falsos Positivos)."
 )
 
 modelo_atual = modelo_xgb if "XGBoost" in escolha_modelo else modelo_lr
 
-# dividindo o app em 3 abas simples
+# dividindo a interface
 aba1, aba2, aba3 = st.tabs([
-    "Teste Individual", 
-    "Teste em Lote (CSV)", 
-    "Tabela de Resultados (Artigo)"
+    "🔍 Simulador Individual", 
+    "📂 Auditoria em Lote (CSV)", 
+    "📊 Métricas do Experimento"
 ])
 
 # ABA 1: TESTE DE UMA TRANSACAO POR VEZ
 with aba1:
-    st.subheader("Simular análise de uma transacão do conjunto de teste")
+    st.subheader("Inspeção Individual de Transações da Base de Teste")
     
     col1, col2 = st.columns([1, 2])
     
     with col1:
-        filtro = st.radio("Filtrar transações de exemplo por tipo:", ["Fraudes Reais (Class = 1)", "Normais Reais (Class = 0)"])
+        filtro = st.radio("Filtrar amostras de validação por classe:", ["Fraudes Confirmadas (Class = 1)", "Operações Legítimas (Class = 0)"])
         classe_escolhida = 1 if "Fraudes" in filtro else 0
         
         df_opcoes = df_amostras[df_amostras['Class_Real'] == classe_escolhida]
-        id_linha = st.selectbox("Selecione o índice da transação:", df_opcoes.index)
+        id_linha = st.selectbox("Selecione o ID da transação (Index):", df_opcoes.index)
         
-        # pegando os dados da linha escolhida
+        # extraindo os dados da transacao escolhida
         dados_transacao = df_opcoes.loc[[id_linha]].drop(columns=['Class_Real'])
         rotulo_real = df_opcoes.loc[id_linha, 'Class_Real']
         
         st.info(f"**Valor (Amount):** $ {dados_transacao['Amount'].values[0]:.2f} \n\n"
                 f"**Tempo (Time):** {dados_transacao['Time'].values[0]:.0f} s \n\n"
-                f"**Classe Real:** {'Fraude (1)' if rotulo_real == 1 else 'Normal (0)'}")
+                f"**Rótulo Verdadeiro:** {'🚨 FRAUDE (1)' if rotulo_real == 1 else '✅ LEGÍTIMA (0)'}")
 
     with col2:
-        # aplicando o mesmo scaler usado no treinamento
+        # aplicando padronizacao restrita do treino
         dados_norm = pd.DataFrame(scaler.transform(dados_transacao), columns=dados_transacao.columns)
         
-        # calculando a probabilidade de ser fraude
-        prob = float(modelo_atual.predict_proba(dados_norm)[:, 1][0])
+        # calculando probabilidade ou funcao de decisao
+        if hasattr(modelo_atual, "predict_proba"):
+            prob = float(modelo_atual.predict_proba(dados_norm)[:, 1][0])
+        else:
+            prob = float(modelo_atual.decision_function(dados_norm)[0])
+            
         predicao = 1 if prob >= limiar else 0
         
-        st.markdown("### Resultado da Predição")
+        st.markdown("### Resposta do Classificador")
         m1, m2, m3 = st.columns(3)
-        m1.metric("Probabilidade calculada", f"{prob*100:.2f}%")
-        m2.metric("Threshold escolhido", f"{limiar*100:.0f}%")
-        m3.metric("Classificação do modelo", "FRAUDE" if predicao == 1 else "LEGÍTIMA")
+        m1.metric("Escore / Probabilidade", f"{prob*100:.2f}%" if prob <= 1.0 else f"{prob:.2f}")
+        m2.metric("Limiar Aplicado", f"{limiar*100:.0f}%" if limiar <= 1.0 else f"{limiar:.2f}")
+        m3.metric("Ação Sugerida", "BLOQUEAR 🚨" if predicao == 1 else "APROVAR ✅")
         
-        # mostrando se o modelo acertou ou errou
+        # exibindo interpretacao da matriz de confusao
         if predicao == 1 and rotulo_real == 1:
-            st.success("Acerto (Verdadeiro Positivo): O modelo identificou a fraude corretamente!")
+            st.success("🎯 **Verdadeiro Positivo (VP):** O modelo identificou a fraude com sucesso.")
         elif predicao == 0 and rotulo_real == 0:
-            st.success("Acerto (Verdadeiro Negativo): Transação normal aprovada corretamente.")
+            st.success("🎯 **Verdadeiro Negativo (VN):** Operação aprovada corretamente.")
         elif predicao == 1 and rotulo_real == 0:
-            st.warning("Erro (Falso Positivo): A transação era normal, mas o modelo bloqueou como fraude.")
+            st.warning("⚠️ **Falso Positivo (FP):** Alarme falso! Operação legítima bloqueada indevidamente.")
         else:
-            st.error("Erro (Falso Negativo): Era uma fraude real, mas o modelo deixou passar!")
+            st.error("❌ **Falso Negativo (FN):** Falha na segurança! A fraude não foi detectada pelo modelo.")
 
-        with st.expander("Visualizar colunas V1 a V28 da transacao"):
+        with st.expander("Ver componentes anonimizadas (V1 a V28)"):
             st.dataframe(dados_transacao)
 
 # ABA 2: TESTE EM LOTE
 with aba2:
-    st.subheader("Avaliar várias transações de uma vez")
-    st.write("Você pode subir um arquivo CSV ou testar com as 50 amostras salvas do conjunto de teste.")
+    st.subheader("Processamento Paralelo de Lotes")
+    st.write("Faça upload de um CSV com novas transações ou utilize o lote de teste embarcado na aplicação.")
     
-    arquivo_csv = st.file_uploader("Fazer upload de arquivo CSV (opcional)", type=["csv"])
+    arquivo_csv = st.file_uploader("Upload de lote CSV (opcional)", type=["csv"])
     df_lote = pd.read_csv(arquivo_csv) if arquivo_csv is not None else df_amostras.copy()
     
-    # removendo a coluna de resposta se ela existir no arquivo
     col_alvo = 'Class_Real' if 'Class_Real' in df_lote.columns else ('Class' if 'Class' in df_lote.columns else None)
     X_lote = df_lote.drop(columns=[col_alvo]) if col_alvo else df_lote.copy()
     
-    # normalizando e prevendo
+    # normalizando o lote inteiro de uma vez
     X_lote_norm = pd.DataFrame(scaler.transform(X_lote), columns=X_lote.columns)
-    probs_lote = modelo_atual.predict_proba(X_lote_norm)[:, 1]
+    
+    if hasattr(modelo_atual, "predict_proba"):
+        probs_lote = modelo_atual.predict_proba(X_lote_norm)[:, 1]
+    else:
+        probs_lote = modelo_atual.decision_function(X_lote_norm)
+        
     preds_lote = (probs_lote >= limiar).astype(int)
     
     df_saida = df_lote.copy()
-    df_saida['Probabilidade_Fraude'] = np.round(probs_lote, 4)
-    df_saida['Predicao_Modelo'] = np.where(preds_lote == 1, 'Fraude (1)', 'Normal (0)')
+    df_saida['Escore_Modelo'] = np.round(probs_lote, 4)
+    df_saida['Status_Avaliacao'] = np.where(preds_lote == 1, '🚨 Bloqueado', '✅ Aprovado')
     
     c1, c2 = st.columns(2)
-    c1.metric("Total de transações no lote", len(df_saida))
-    c2.metric("Transações marcadas como fraude", int(preds_lote.sum()))
+    c1.metric("Volume Analisado (Registros)", len(df_saida))
+    c2.metric("Alertas de Fraude Disparados", int(preds_lote.sum()))
     
-    colunas_mostrar = ['Time', 'Amount', 'Probabilidade_Fraude', 'Predicao_Modelo']
+    colunas_mostrar = ['Time', 'Amount', 'Escore_Modelo', 'Status_Avaliacao']
     if col_alvo:
         colunas_mostrar.append(col_alvo)
     st.dataframe(df_saida[colunas_mostrar], use_container_width=True)
 
-# ABA 3: TABELA DO COLAB
+# ABA 3: TABELA DO ARTIGO
 with aba3:
-    st.subheader("Métricas obtidas nos experimentos (Google Colab)")
-    st.write("Comparação entre a replicação dos artigos e os modelos propostos:")
+    st.subheader("Métricas da Avaliação Independente (Protocolo B e A)")
+    st.write("Tabela exportada dos experimentos, refletindo a precisão exata obtida na partição de teste.")
     st.dataframe(df_resultados, use_container_width=True)
